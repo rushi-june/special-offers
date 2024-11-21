@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Offers Viewer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .offer-image {
+            height: 200px;
+            object-fit: contain;
+            background: #f8f9fa;
+        }
+        .price-tag {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .retail-price {
+            text-decoration: line-through;
+            color: #999;
+        }
+        #searchInput {
+            max-width: 300px;
+        }
+        .no-results {
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            color: #666;
+        }
+        .item-box {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="row mb-4">
+            <div class="col">
+                <h1>Special Offers Viewer</h1>
+                <div class="row g-3 align-items-center mb-4">
+                    <div class="col-auto">
+                        <input type="file" id="jsonFile" class="form-control" accept=".json">
+                    </div>
+                        <div class="col-auto">
+                            <select id="nameDropdown" class="form-select">
+                                <option value="" disabled selected>Select a name</option>
+                            </select>
+                        </div>
+                    <div class="col-auto">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by name...">                    
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row" id="offersContainer"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+    const DEFAULT_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
+    let allOffers = [];
+
+    // Handle JSON File Loading
+    $('#jsonFile').on('change', function (e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            try {
+                allOffers = JSON.parse(e.target.result);
+                populateDropdown(allOffers);
+                displayOffers(allOffers);
+            } catch (error) {
+                alert('Error parsing JSON file: ' + error);
+            }
+        };
+
+        reader.readAsText(file);
+    });
+
+    // Populate Dropdown with Names
+    function populateDropdown(offers) {
+        const dropdown = $('#nameDropdown');
+        dropdown.empty();
+        dropdown.append('<option value="" disabled selected>Select a name</option>'); // Default option
+
+        offers.forEach(offer => {
+            dropdown.append(`<option value="${offer.at.ti.default}">${offer.at.ti.default}</option>`);
+        });
+    }
+
+    // Handle Dropdown Selection
+    $('#nameDropdown').on('change', function () {
+        const selectedName = $(this).val();
+        $('#searchInput').val(selectedName);
+        $('#searchInput').trigger('input'); // Trigger search input to filter offers
+    });
+
+    // Handle Search Input
+    $('#searchInput').on('input', function () {
+        const searchTerm = $(this).val().toLowerCase();
+        const filteredOffers = allOffers.filter(offer =>
+            offer.at.ti.default.toLowerCase().includes(searchTerm)
+        );
+        displayOffers(filteredOffers);
+    });
+
+    function displayOffers(offers) {
+        const container = $('#offersContainer');
+        container.empty();
+
+        if (offers.length === 0) {
+            container.append('<div class="no-results">No offers found</div>');
+            return;
+        }
+
+        offers.forEach(offer => {
+            container.append(createOfferCard(offer));
+        });
+    }
+
+    function createOfferCard(offer) {
+        const imageUrl = offer.at.coik?.startsWith('http') ? offer.at.coik : DEFAULT_IMAGE;
+
+        let packageHtml = '';
+        if (offer.pkg && offer.pkg.length) {
+            offer.pkg.forEach(pkg => {
+                packageHtml += `
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <div class="d-flex justify-content-between">
+                            <div class="text-end">
+                                <div class="price-tag">${pkg.co} ${pkg.cu}</div>
+                            </div>
+                        </div>
+                        <div class="small mt-2">
+                            <div>Package ID: ${pkg.pkid || 'N/A'}</div>
+                            <div>Product ID: ${pkg.pid || 'N/A'}</div>
+                            <div>Quantity: ${pkg.qt || '1'}</div>
+                            <div>Remaining: ${pkg.rc ?? 'Unlimited'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        let rewardsHtml = '';
+        if (offer.case?.slots) {
+            offer.case.slots.forEach(slot => {
+                slot.rbkts.forEach(bracket => {
+                    rewardsHtml += `
+                        <div class="mb-2">
+                            <strong>${bracket.lbl.default}</strong>
+                            <ul class="list-unstyled ms-3 small">
+                                ${bracket.it.map(item => `
+                                    <li class="item-box">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>${item.ti.default}</strong>
+                                            <span class="badge ${item.ic ? 'bg-primary' : 'bg-secondary'}">
+                                                ${item.ic ? 'Consumable' : 'Non-Consumable'}
+                                            </span>
+                                        </div>
+                                        <div class="small mt-2">
+                                            <div>Quantity: ${item.qt}</div>
+                                            <div>Element ID: ${item.ge}</div>
+                                            <div>Type: ${item.tp}</div>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        const tagsHtml = (offer.at.tg || [])
+            .map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`)
+            .join('');
+
+        return `
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="position-relative">
+                        <img src="${imageUrl}" class="card-img-top offer-image" 
+                             onerror="this.src='${DEFAULT_IMAGE}'">
+                        <span class="position-absolute top-0 end-0 badge bg-primary m-2">
+                            ${offer.at.tp}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">${offer.at.ti.default}</h5>
+                        <p class="card-text">${offer.at.dc.default}</p>
+                        <div class="mb-3">${tagsHtml}</div>
+                        ${packageHtml}
+                        <div class="mt-3">
+                            <h6>Rewards:</h6>
+                            ${rewardsHtml}
+                        </div>
+                        <div class="mt-3 text-muted small">
+                            ID: ${offer._id}<br>
+                            Priority: ${offer.at.pr}<br>
+                            Active: ${offer.sch.ia ? 'Yes' : 'No'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+});
+    </script>
+</body>
+</html>
