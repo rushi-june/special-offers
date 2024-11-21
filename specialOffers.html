@@ -37,7 +37,7 @@
     </style>
 </head>
 <body>
-    <div class="container py-4">
+    <div class="container-fluid py-4">
         <div class="row mb-4">
             <div class="col">
                 <h1>Special Offers Viewer</h1>
@@ -142,6 +142,7 @@
                             <div>Product ID: ${pkg.pid || 'N/A'}</div>
                             <div>Quantity: ${pkg.qt || '1'}</div>
                             <div>Remaining: ${pkg.rc ?? 'Unlimited'}</div>
+                            <div>Retail Price: ${pkg.rp ?? 'N/A'}</div>
                         </div>
                     </div>
                 `;
